@@ -1,0 +1,6 @@
+{
+  "name": "ResolveAI",
+  "description": "AI-assisted customer support ticket automation platform with human-in-the-loop verification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
