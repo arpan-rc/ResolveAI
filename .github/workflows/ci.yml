@@ -12,7 +12,6 @@ jobs:
 
     env:
       FORCE_FALLBACK_MODE: "true"
-      NODE_ENV: "production"
 
     steps:
       - name: Checkout Repository
