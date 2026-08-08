@@ -13,13 +13,15 @@ interface CustomerPortalProps {
   allTickets: Ticket[];
   recentSubmittedTicket: Ticket | null;
   onSwitchToAgentRole?: () => void;
+  isCustomerStandalone?: boolean;
 }
 
 export const CustomerPortal: React.FC<CustomerPortalProps> = ({
   onSubmitTicket,
   allTickets,
   recentSubmittedTicket,
-  onSwitchToAgentRole
+  onSwitchToAgentRole,
+  isCustomerStandalone = false
 }) => {
   const [customerName, setCustomerName] = useState('Alex Johnson');
   const [customerEmail, setCustomerEmail] = useState('alex.johnson@example.com');
@@ -361,7 +363,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                   </div>
                 </div>
 
-                {onSwitchToAgentRole && (
+                {!isCustomerStandalone && onSwitchToAgentRole && (
                   <div className="pt-4 border-t border-slate-800">
                     <button
                       type="button"
@@ -371,6 +373,13 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
                       <span>Switch to Support Agent View</span>
                       <ArrowRight className="h-4 w-4" />
                     </button>
+                  </div>
+                )}
+
+                {isCustomerStandalone && (
+                  <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 flex items-center gap-2 bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <Lock className="h-4 w-4 text-indigo-400 shrink-0" />
+                    <span>Client Machine Isolation Active: Agent Workspace & Settings restricted on this machine.</span>
                   </div>
                 )}
 

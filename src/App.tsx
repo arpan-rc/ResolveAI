@@ -11,8 +11,49 @@ import { RoleSelectionLanding } from './components/RoleSelectionLanding';
 import { AIStatus, AuditLog, Category, DashboardStats, Department, Priority, Ticket } from './types';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'landing' | 'agent' | 'customer' | 'analytics'>('landing');
+  const getInitialInstance = (): 'customer' | 'agent' | 'hub' => {
+    if (typeof window === 'undefined') return 'hub';
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('instance') || params.get('mode');
+    if (mode === 'customer' || mode === 'client') return 'customer';
+    if (mode === 'agent') return 'agent';
+    return 'hub';
+  };
+
+  const [instanceMode, setInstanceMode] = useState<'customer' | 'agent' | 'hub'>(getInitialInstance);
+  const [currentView, setCurrentView] = useState<'landing' | 'agent' | 'customer' | 'analytics'>(() => {
+    const init = getInitialInstance();
+    if (init === 'customer') return 'customer';
+    if (init === 'agent') return 'agent';
+    return 'landing';
+  });
+
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+
+  // Switch Instance Handler
+  const handleInstanceChange = (mode: 'customer' | 'agent' | 'hub') => {
+    setInstanceMode(mode);
+    if (mode === 'customer') {
+      setCurrentView('customer');
+    } else if (mode === 'agent') {
+      setCurrentView('agent');
+      setSelectedTicketId(null);
+    } else {
+      setCurrentView('landing');
+    }
+
+    // Sync URL search query for shareable links
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (mode === 'hub') {
+        url.searchParams.delete('instance');
+        url.searchParams.delete('mode');
+      } else {
+        url.searchParams.set('instance', mode);
+      }
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
 
   // Data states
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -242,9 +283,12 @@ export default function App() {
         <Header
           currentView={currentView}
           onViewChange={(v) => {
+            if (instanceMode === 'customer' && v !== 'customer') return;
             setCurrentView(v);
             if (v === 'agent') setSelectedTicketId(null);
           }}
+          instanceMode={instanceMode}
+          onInstanceModeChange={handleInstanceChange}
           aiStatus={aiStatus}
           onOpenAiModal={() => setIsAiModalOpen(true)}
           onSeedDemo={handleSeedDemo}
@@ -255,14 +299,11 @@ export default function App() {
         <main className="pb-10">
           {currentView === 'landing' && (
             <RoleSelectionLanding
-              onSelectRole={(role) => {
-                setCurrentView(role);
-                if (role === 'agent') setSelectedTicketId(null);
-              }}
+              onSelectInstance={(inst) => handleInstanceChange(inst)}
             />
           )}
 
-          {currentView === 'agent' && (
+          {currentView === 'agent' && instanceMode !== 'customer' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               {selectedTicketId && selectedTicket ? (
                 /* Ticket Detail Inspection Workspace */
@@ -309,9 +350,12 @@ export default function App() {
               onSubmitTicket={handleSubmitCustomerTicket}
               allTickets={tickets}
               recentSubmittedTicket={recentCustomerTicket}
+              isCustomerStandalone={instanceMode === 'customer'}
               onSwitchToAgentRole={() => {
-                setCurrentView('agent');
-                setSelectedTicketId(null);
+                if (instanceMode !== 'customer') {
+                  setCurrentView('agent');
+                  setSelectedTicketId(null);
+                }
               }}
             />
           )}
@@ -330,7 +374,7 @@ export default function App() {
         <div className="flex items-center gap-4">
           <span>Session: <span className="text-slate-300 font-mono">ResolveAI Demo Session</span></span>
           <span className="text-slate-700">|</span>
-          <span>Role: <span className="text-indigo-400 font-semibold uppercase">{currentView}</span></span>
+          <span>Instance Mode: <span className="text-indigo-400 font-semibold uppercase font-mono">{instanceMode === 'customer' ? 'Customer Machine (Isolated Client)' : instanceMode === 'agent' ? 'Support Agent Workstation' : 'Prototype Navigation Hub'}</span></span>
         </div>
         <div className="flex items-center gap-4 mt-2 sm:mt-0">
           <div className="flex items-center gap-2 bg-slate-950/80 px-2.5 py-1 rounded-full border border-slate-800">

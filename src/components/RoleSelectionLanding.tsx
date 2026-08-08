@@ -2,10 +2,10 @@ import React from 'react';
 import { ShieldCheck, User, UserCheck, Bot, ArrowRight, Sparkles, Lock, Zap } from 'lucide-react';
 
 interface RoleSelectionLandingProps {
-  onSelectRole: (role: 'customer' | 'agent') => void;
+  onSelectInstance: (instance: 'customer' | 'agent' | 'hub') => void;
 }
 
-export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onSelectRole }) => {
+export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onSelectInstance }) => {
   return (
     <div className="min-h-[85vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
       {/* Background Ambient Glows */}
@@ -37,69 +37,69 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onSe
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl space-y-6">
           <div className="space-y-1">
             <h2 className="text-lg sm:text-xl font-bold text-white">
-              How would you like to continue?
+              Launch Prototype Instance Environment
             </h2>
             <p className="text-xs sm:text-sm text-slate-400">
-              Select your role to explore the interactive customer or support agent workspace.
+              Select an isolated machine instance or open the interactive demo hub.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             
-            {/* Role 1: Customer */}
+            {/* Instance 1: Isolated Customer Machine */}
             <button
-              onClick={() => onSelectRole('customer')}
+              onClick={() => onSelectInstance('customer')}
               className="group relative bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/60 p-6 rounded-2xl text-left transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 flex flex-col justify-between space-y-4 active:scale-98"
             >
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
                   <User className="h-6 w-6" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 group-hover:bg-indigo-500/20 group-hover:text-indigo-300 border border-slate-700">
-                  Customer Portal
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-indigo-300 group-hover:bg-indigo-500/20 border border-indigo-500/30">
+                  Client Machine View
                 </span>
               </div>
 
               <div>
                 <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-1.5">
-                  <span>👤 CUSTOMER</span>
+                  <span>💻 CUSTOMER PORTAL</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Submit a support ticket, trigger instant AI triage, and track live ticket resolution status.
+                  Run as isolated client machine. Agent Workspace & settings are strictly restricted on this workstation.
                 </p>
               </div>
 
               <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-semibold text-indigo-400 group-hover:text-indigo-300">
-                <span>Enter Customer Portal</span>
+                <span>Launch Client Instance</span>
                 <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
 
-            {/* Role 2: Support Agent */}
+            {/* Instance 2: Agent Workspace Station */}
             <button
-              onClick={() => onSelectRole('agent')}
+              onClick={() => onSelectInstance('agent')}
               className="group relative bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-purple-500/60 p-6 rounded-2xl text-left transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10 flex flex-col justify-between space-y-4 active:scale-98"
             >
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-all">
                   <UserCheck className="h-6 w-6" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 group-hover:bg-purple-500/20 group-hover:text-purple-300 border border-slate-700">
-                  Agent Workspace
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-purple-300 group-hover:bg-purple-500/20 border border-purple-500/30">
+                  Agent Station View
                 </span>
               </div>
 
               <div>
                 <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors flex items-center gap-1.5">
-                  <span>🧑‍💼 SUPPORT AGENT</span>
+                  <span>🧑‍💼 AGENT WORKSPACE</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Inspect AI recommendations, verify or edit decisions, handle high-risk tickets, and dispatch responses.
+                  Internal support station. Inspect AI recommendations, verify/approve tickets, re-analyze, and configure settings.
                 </p>
               </div>
 
               <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-semibold text-purple-400 group-hover:text-purple-300">
-                <span>Enter Agent Dashboard</span>
+                <span>Launch Agent Instance</span>
                 <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
