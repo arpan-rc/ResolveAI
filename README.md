@@ -232,6 +232,23 @@ PORT=3000
 
 ---
 
+## 11. Public Demo
+
+- **Customer Portal (Client Machine View):** 
+  https://ais-pre-i2yrdz6sj2snl437hfbevr-414977834671.asia-southeast1.run.app/customer
+
+- **Support Agent Station View:** 
+  https://ais-pre-i2yrdz6sj2snl437hfbevr-414977834671.asia-southeast1.run.app/agent
+
+- **Prototype Navigation Hub:** 
+  https://ais-pre-i2yrdz6sj2snl437hfbevr-414977834671.asia-southeast1.run.app
+
+### Demo Access Instructions
+- Opening the **Customer Portal** link locks the session into a clean self-service ticket submission interface.
+- Opening the **Agent Station** link directly opens the agent queue with human-in-the-loop review controls, bulk approval actions, and AI triage breakdowns.
+
+---
+
 ## 🏆 Hackathon Presentation Demo Flow (3 Minutes)
 
 1. **Overview (30s):** Open Agent Dashboard. Highlight the banner `"AI RECOMMENDATION — HUMAN VERIFICATION REQUIRED"`.
