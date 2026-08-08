@@ -58,7 +58,7 @@ export const AIToggleModal: React.FC<AIToggleModalProps> = ({
                 {aiStatus?.activeProvider || 'Deterministic Fallback Rule Engine'}
               </div>
               <p className="text-xs text-slate-400">
-                {aiStatus?.hasApiKey ? 'Anthropic API Key Configured' : 'No API Key — Seamless Fallback Active'}
+                {aiStatus?.hasApiKey ? 'AI API Keys Configured (Claude / Gemini)' : 'No API Key — Seamless Fallback Active'}
               </p>
             </div>
           </div>

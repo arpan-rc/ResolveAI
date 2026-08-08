@@ -162,6 +162,27 @@ describe('ResolveAI Support Ticket Triage Suite', () => {
 
       process.env.FORCE_FALLBACK_MODE = 'false';
     });
+
+    it('should accurately detect configured AI providers in activeProvider status string', () => {
+      const prevAnthropic = process.env.ANTHROPIC_API_KEY;
+      const prevGemini = process.env.GEMINI_API_KEY;
+      process.env.FORCE_FALLBACK_MODE = 'false';
+
+      process.env.ANTHROPIC_API_KEY = 'test-anthropic';
+      process.env.GEMINI_API_KEY = 'test-gemini';
+
+      const statusBoth = AIService.getStatus();
+      expect(statusBoth.hasApiKey).toBe(true);
+      expect(statusBoth.activeProvider).toContain('Anthropic Claude 3.5 Sonnet');
+      expect(statusBoth.activeProvider).toContain('Google Gemini 3.6 Flash');
+
+      process.env.ANTHROPIC_API_KEY = '';
+      const statusGeminiOnly = AIService.getStatus();
+      expect(statusGeminiOnly.activeProvider).toBe('Google Gemini 3.6 Flash');
+
+      process.env.ANTHROPIC_API_KEY = prevAnthropic;
+      process.env.GEMINI_API_KEY = prevGemini;
+    });
   });
 
 });
