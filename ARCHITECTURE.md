@@ -35,11 +35,14 @@ graph TD
 
 ## 4. Frontend Architecture
 - **Framework:** React 19, Vite 6, Tailwind CSS v4, Lucide Icons, Motion.
+- **Theme Engine:** Class-based `@custom-variant dark` in Tailwind v4 with instant state switching and `localStorage` persistence (`resolve_ai_theme`).
+- **PDF Engine:** Client-side jsPDF generator rendering custom Invoice PDFs and Support Resolution Records.
 - **Components:**
-  - `Header.tsx`: Navigation bar, real-time AI status badge, demo controls.
+  - `Header.tsx`: Navigation bar, real-time AI status badge, theme toggle (☀ / 🌙), demo controls.
+  - `RoleSelectionLanding.tsx`: Authentication screen for Customer and Support Agent demo logins.
   - `TicketQueue.tsx`: Searchable, filterable table of pending, approved, and rejected tickets.
-  - `TicketDetail.tsx`: Human Review & Override Workspace with draft text editor, high-risk banners, department dropdowns, and response dispatch simulator.
-  - `CustomerPortal.tsx`: Self-service portal with instant pre-filled sample templates for testing.
+  - `TicketDetail.tsx`: Human Review & Override Workspace with draft text editor, high-risk banners, department dropdowns, PDF generator, and response dispatch simulator.
+  - `CustomerPortal.tsx`: Customer self-service portal with instant pre-filled sample templates and invoice PDF exports.
   - `AnalyticsPanel.tsx`: Telemetry monitoring human verification rate, AI accuracy, resolution times, and live audit feed.
   - `AIToggleModal.tsx`: Demo test bench for forcing fallback mode and verifying zero-crash capabilities.
 

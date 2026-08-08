@@ -80,24 +80,24 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ stats, activeFilter, onF
             onClick={() => onFilterChange(c.id)}
             className={`p-4 rounded-xl border transition-all text-left relative overflow-hidden group ${
               isSelected
-                ? 'bg-slate-800 border-indigo-500 ring-2 ring-indigo-500/30 shadow-lg shadow-indigo-500/10'
-                : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:bg-slate-800/60'
+                ? 'bg-indigo-50/80 dark:bg-slate-800 border-indigo-500 ring-2 ring-indigo-500/30 shadow-lg shadow-indigo-500/10'
+                : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-slate-300">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300">
                 {c.label}
               </span>
-              <div className={`p-1.5 rounded-lg bg-${c.color}-500/10 text-${c.color}-400 border border-${c.color}-500/20`}>
+              <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                 <Icon className="h-4 w-4" />
               </div>
             </div>
 
-            <div className="text-2xl font-black tracking-tight text-white mb-0.5 font-mono">
+            <div className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-0.5 font-mono">
               {c.value}
             </div>
 
-            <p className="text-[11px] text-slate-400 truncate">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
               {c.subtext}
             </p>
           </button>

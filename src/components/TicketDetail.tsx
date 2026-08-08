@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, ShieldAlert, AlertTriangle, CheckCircle2, XCircle, Send, 
-  RotateCcw, Sparkles, UserCheck, Bot, Clock, Mail, ChevronRight, MessageSquare, 
-  History, User, FileText, Check, AlertCircle, Edit3, ArrowUpRight, Zap
+  RotateCcw, UserCheck, Bot, Clock, Mail, MessageSquare, 
+  History, User, FileText, Edit3, Zap, Download
 } from 'lucide-react';
 import { AuditLog, Category, Department, Priority, Ticket } from '../types';
+import { generateInvoicePDF, isFinancialTicket } from '../utils/pdfGenerator';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -73,43 +74,53 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       
       {/* Top Header & Breadcrumb Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 p-4 rounded-xl border border-slate-800 shadow-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900/80 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-md transition-colors">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-mono font-black text-indigo-400">{ticket.id}</span>
-              <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold border border-slate-700">
+              <span className="text-lg font-mono font-black text-indigo-600 dark:text-indigo-400">{ticket.id}</span>
+              <span className="text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
                 {ticket.status.replace(/_/g, ' ')}
               </span>
             </div>
-            <h1 className="text-base font-bold text-white mt-0.5">{ticket.subject}</h1>
+            <h1 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">{ticket.subject}</h1>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
           <button
+            onClick={() => generateInvoicePDF(ticket)}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md active:scale-95"
+            title="Download Official Record PDF"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>
+              {isFinancialTicket(ticket) ? 'Download Invoice PDF' : 'Download Support Resolution PDF'}
+            </span>
+          </button>
+          <button
             onClick={() => onReAnalyze(ticket.id, false)}
             disabled={isAnalyzing}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
             title="Re-trigger AI Analysis"
           >
-            <RotateCcw className={`h-3.5 w-3.5 text-indigo-400 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            <RotateCcw className={`h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 ${isAnalyzing ? 'animate-spin' : ''}`} />
             <span>Re-Analyze</span>
           </button>
           <button
             onClick={() => onReAnalyze(ticket.id, true)}
             disabled={isAnalyzing}
-            className="px-3 py-1.5 rounded-lg bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/40 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
             title="Force Deterministic Fallback Mode for Testing"
           >
-            <Zap className="h-3.5 w-3.5 text-amber-400" />
+            <Zap className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
             <span>Force Fallback</span>
           </button>
         </div>

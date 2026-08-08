@@ -1,5 +1,15 @@
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export type UserRole = 'customer' | 'agent';
+
+export interface UserSession {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  token?: string;
+}
+
 export type Category = 
   | 'Billing'
   | 'Account Access'

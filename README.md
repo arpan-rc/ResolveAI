@@ -75,11 +75,12 @@ ResolveAI is designed with a **Modular AI Service Layer** and a **Deterministic 
 ## ✨ Key Features
 
 1. **Human-in-the-Loop Safeguards:** Prominent visual banners flag high-risk actions (refunds, account deletions, fraud) requiring mandatory human sign-off.
-2. **Modular Dual AI Engine:** Automatically uses **Claude 3.5 Sonnet** when an API key is present, and seamlessly transitions to the **Deterministic Rule Engine** if offline.
-3. **Editable Decision Workspace:** Human agents can override category, priority, department, or response text before dispatch.
-4. **Interactive Customer Email Simulator:** Real-time preview showing how the customer receives the verified response.
-5. **Complete Audit Trail:** Every event is logged with timestamps, actors (`CUSTOMER`, `AI_SYSTEM`, `HUMAN_AGENT`), and details.
-6. **Demo Mode Test Bench:** Built-in modal to force fallback mode or simulate AI failures in 1 click for judges.
+2. **Modular Dual AI Engine:** Automatically uses **Claude 3.5 Sonnet / Gemini** when an API key is present, and seamlessly transitions to the **Deterministic Rule Engine** if offline.
+3. **Role-Based Authentication & Authorization:** Two distinct roles (**Customer** and **Support Agent**) with secured frontend routes and backend header validation (`x-user-role`, `x-user-email`).
+4. **Dynamic PDF Generator:** Customers can generate and download official **Invoice PDFs** for financial transactions or **Support Resolution PDFs** for general inquiries.
+5. **Universal Theme System:** Seamless ☀ **Light Mode** & 🌙 **Dark Mode** toggle with instant reactivity and `localStorage` persistence.
+6. **Editable Decision Workspace:** Human agents can override category, priority, department, or response text before dispatch.
+7. **Complete Audit Trail:** Every event is logged with timestamps, actors (`CUSTOMER`, `AI_SYSTEM`, `HUMAN_AGENT`), and details.
 
 ---
 

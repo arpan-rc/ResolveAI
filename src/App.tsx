@@ -8,32 +8,74 @@ import { CustomerPortal } from './components/CustomerPortal';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { AIToggleModal } from './components/AIToggleModal';
 import { RoleSelectionLanding } from './components/RoleSelectionLanding';
-import { AIStatus, AuditLog, Category, DashboardStats, Department, Priority, Ticket } from './types';
+import { AIStatus, AuditLog, Category, DashboardStats, Department, Priority, Ticket, UserSession } from './types';
 
 export default function App() {
+  // 1. Authenticated User Session
+  const [userSession, setUserSession] = useState<UserSession | null>(() => {
+    try {
+      const saved = localStorage.getItem('resolve_ai_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // 2. Global Theme State (Dark / Light)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('resolve_ai_theme');
+      return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('resolve_ai_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleLogin = (session: UserSession) => {
+    setUserSession(session);
+    localStorage.setItem('resolve_ai_user', JSON.stringify(session));
+    if (session.role === 'customer') {
+      setCurrentView('customer');
+      setInstanceMode('customer');
+    } else {
+      setCurrentView('agent');
+      setInstanceMode('agent');
+    }
+  };
+
+  const handleLogout = () => {
+    setUserSession(null);
+    localStorage.removeItem('resolve_ai_user');
+    setCurrentView('landing');
+  };
+
+  // 3. Instance & View Management
   const getInitialInstance = (): 'customer' | 'agent' | 'hub' => {
     if (typeof window === 'undefined') return 'hub';
-    
-    // 1. Check URL path (e.g. /customer or /agent)
-    const path = window.location.pathname.toLowerCase();
-    if (path.startsWith('/customer') || path.startsWith('/client')) return 'customer';
-    if (path.startsWith('/agent')) return 'agent';
-
-    // 2. Check URL search parameters (e.g. ?instance=customer or ?instance=agent)
     const params = new URLSearchParams(window.location.search);
     const mode = params.get('instance') || params.get('mode');
     if (mode === 'customer' || mode === 'client') return 'customer';
     if (mode === 'agent') return 'agent';
-
     return 'hub';
   };
 
   const [instanceMode, setInstanceMode] = useState<'customer' | 'agent' | 'hub'>(getInitialInstance);
   const [currentView, setCurrentView] = useState<'landing' | 'agent' | 'customer' | 'analytics'>(() => {
-    const init = getInitialInstance();
-    if (init === 'customer') return 'customer';
-    if (init === 'agent') return 'agent';
-    return 'landing';
+    if (!userSession) return 'landing';
+    return userSession.role === 'customer' ? 'customer' : 'agent';
   });
 
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -49,18 +91,16 @@ export default function App() {
     } else {
       setCurrentView('landing');
     }
+  };
 
-    // Sync URL search query for shareable links
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (mode === 'hub') {
-        url.searchParams.delete('instance');
-        url.searchParams.delete('mode');
-      } else {
-        url.searchParams.set('instance', mode);
-      }
-      window.history.replaceState({}, '', url.toString());
+  // Helper to build Auth Headers for API calls
+  const getAuthHeaders = (extraHeaders: Record<string, string> = {}) => {
+    const headers: Record<string, string> = { ...extraHeaders };
+    if (userSession) {
+      headers['x-user-role'] = userSession.role;
+      headers['x-user-email'] = userSession.email;
     }
+    return headers;
   };
 
   // Data states
@@ -81,10 +121,11 @@ export default function App() {
   // Initial Fetch Data
   const fetchData = async () => {
     try {
+      const headers = getAuthHeaders();
       const [aiRes, statsRes, ticketsRes] = await Promise.all([
-        fetch('/api/ai/status'),
-        fetch('/api/dashboard/stats'),
-        fetch('/api/tickets')
+        fetch('/api/ai/status', { headers }),
+        fetch('/api/dashboard/stats', { headers }),
+        fetch('/api/tickets', { headers })
       ]);
 
       if (aiRes.ok) setAiStatus(await aiRes.json());
@@ -96,14 +137,18 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (userSession) {
+      fetchData();
+    }
+  }, [userSession]);
 
   // Fetch ticket details when selecting a ticket
   const handleSelectTicket = async (id: string) => {
     setSelectedTicketId(id);
     try {
-      const res = await fetch(`/api/tickets/${id}`);
+      const res = await fetch(`/api/tickets/${id}`, {
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         setSelectedTicket(data.ticket);
@@ -118,7 +163,10 @@ export default function App() {
   const handleSeedDemo = async () => {
     setIsSeeding(true);
     try {
-      const res = await fetch('/api/demo/seed', { method: 'POST' });
+      const res = await fetch('/api/demo/seed', {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         await fetchData();
         if (selectedTicketId) {
@@ -135,7 +183,10 @@ export default function App() {
   // Toggle fallback mode
   const handleToggleFallback = async () => {
     try {
-      const res = await fetch('/api/ai/toggle-fallback', { method: 'POST' });
+      const res = await fetch('/api/ai/toggle-fallback', {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const updated = await res.json();
         setAiStatus(updated);
@@ -156,7 +207,7 @@ export default function App() {
     try {
       const res = await fetch('/api/tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ ...data, autoAnalyze: true })
       });
 
@@ -178,7 +229,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/tickets/${id}/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ forceFallback })
       });
 
@@ -208,9 +259,9 @@ export default function App() {
     try {
       const res = await fetch(`/api/tickets/${selectedTicketId}/approve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          reviewer: 'Agent Sarah Jenkins',
+          reviewer: userSession?.name || 'Agent Sarah Jenkins',
           ...reviewData
         })
       });
@@ -236,9 +287,9 @@ export default function App() {
     try {
       const res = await fetch(`/api/tickets/${selectedTicketId}/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          reviewer: 'Agent Sarah Jenkins',
+          reviewer: userSession?.name || 'Agent Sarah Jenkins',
           rejectionReason
         })
       });
@@ -264,9 +315,9 @@ export default function App() {
     try {
       const res = await fetch(`/api/tickets/${selectedTicketId}/escalate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          reviewer: 'Agent Sarah Jenkins',
+          reviewer: userSession?.name || 'Agent Sarah Jenkins',
           escalationNote
         })
       });
@@ -291,10 +342,10 @@ export default function App() {
     try {
       const res = await fetch('/api/tickets/bulk-approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           ids: ticketIds,
-          reviewer: 'Agent Sarah Jenkins'
+          reviewer: userSession?.name || 'Agent Sarah Jenkins'
         })
       });
 
@@ -315,10 +366,10 @@ export default function App() {
     try {
       const res = await fetch('/api/tickets/bulk-escalate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           ids: ticketIds,
-          reviewer: 'Agent Sarah Jenkins',
+          reviewer: userSession?.name || 'Agent Sarah Jenkins',
           escalationNote: 'Bulk escalated to Operations Lead for human review.'
         })
       });
@@ -334,13 +385,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F1A] text-slate-100 font-sans selection:bg-indigo-500 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F1A] text-slate-900 dark:text-slate-100 font-sans transition-colors flex flex-col justify-between">
       <div>
         {/* Header */}
         <Header
           currentView={currentView}
           onViewChange={(v) => {
-            if (instanceMode === 'customer' && v !== 'customer') return;
+            if (userSession?.role === 'customer' && v !== 'customer') return;
             setCurrentView(v);
             if (v === 'agent') setSelectedTicketId(null);
           }}
@@ -350,17 +401,19 @@ export default function App() {
           onOpenAiModal={() => setIsAiModalOpen(true)}
           onSeedDemo={handleSeedDemo}
           isSeeding={isSeeding}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          userSession={userSession}
+          onLogout={handleLogout}
         />
 
         {/* Main Content Body */}
         <main className="pb-10">
-          {currentView === 'landing' && (
+          {!userSession || currentView === 'landing' ? (
             <RoleSelectionLanding
-              onSelectInstance={(inst) => handleInstanceChange(inst)}
+              onLogin={handleLogin}
             />
-          )}
-
-          {currentView === 'agent' && instanceMode !== 'customer' && (
+          ) : currentView === 'agent' && userSession.role === 'agent' ? (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               {selectedTicketId && selectedTicket ? (
                 /* Ticket Detail Inspection Workspace */
@@ -402,24 +455,17 @@ export default function App() {
                 </>
               )}
             </div>
-          )}
-
-          {currentView === 'customer' && (
+          ) : (
             <CustomerPortal
               onSubmitTicket={handleSubmitCustomerTicket}
               allTickets={tickets}
               recentSubmittedTicket={recentCustomerTicket}
-              isCustomerStandalone={instanceMode === 'customer'}
-              onSwitchToAgentRole={() => {
-                if (instanceMode !== 'customer') {
-                  setCurrentView('agent');
-                  setSelectedTicketId(null);
-                }
-              }}
+              userSession={userSession}
+              isCustomerStandalone={userSession.role === 'customer'}
             />
           )}
 
-          {currentView === 'analytics' && (
+          {currentView === 'analytics' && userSession?.role === 'agent' && (
             <AnalyticsPanel
               stats={stats}
               auditLogs={auditLogs}
@@ -428,20 +474,20 @@ export default function App() {
         </main>
       </div>
 
-      {/* Bento Grid Status Footer */}
-      <footer className="my-4 mx-4 sm:mx-6 lg:mx-8 max-w-7xl lg:mx-auto flex flex-col sm:flex-row justify-between items-center px-5 py-3 bg-slate-900/60 border border-slate-800 rounded-xl text-[11px] text-slate-400 backdrop-blur-md">
+      {/* Footer */}
+      <footer className="my-4 mx-4 sm:mx-6 lg:mx-8 max-w-7xl lg:mx-auto flex flex-col sm:flex-row justify-between items-center px-5 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] text-slate-500 dark:text-slate-400 backdrop-blur-md shadow-sm">
         <div className="flex items-center gap-4">
-          <span>Session: <span className="text-slate-300 font-mono">ResolveAI Demo Session</span></span>
-          <span className="text-slate-700">|</span>
-          <span>Instance Mode: <span className="text-indigo-400 font-semibold uppercase font-mono">{instanceMode === 'customer' ? 'Customer Machine (Isolated Client)' : instanceMode === 'agent' ? 'Support Agent Workstation' : 'Prototype Navigation Hub'}</span></span>
+          <span>Active User: <strong className="text-slate-800 dark:text-slate-200 font-mono">{userSession ? `${userSession.name} (${userSession.role})` : 'Unauthenticated'}</strong></span>
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+          <span>Role Mode: <span className="text-indigo-600 dark:text-indigo-400 font-semibold uppercase font-mono">{userSession?.role || 'Guest'}</span></span>
         </div>
         <div className="flex items-center gap-4 mt-2 sm:mt-0">
-          <div className="flex items-center gap-2 bg-slate-950/80 px-2.5 py-1 rounded-full border border-slate-800">
+          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-slate-950/80 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-slate-800">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-emerald-400 font-mono text-[10px] font-bold">HUMAN VERIFICATION ENFORCED</span>
+            <span className="text-emerald-700 dark:text-emerald-400 font-mono text-[10px] font-bold">HUMAN VERIFICATION ENFORCED</span>
           </div>
-          <span className="text-slate-700">|</span>
-          <span className="font-mono text-[10px] text-slate-400">STATUS: 100% OPERATIONAL</span>
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">RESOLVEAI v2.0 ACTIVE</span>
         </div>
       </footer>
 
@@ -455,3 +501,4 @@ export default function App() {
     </div>
   );
 }
+

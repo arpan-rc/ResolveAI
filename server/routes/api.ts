@@ -6,6 +6,74 @@ import { SupportTriageAgent } from '../agents/supportTriageAgent';
 export const apiRouter = Router();
 const supportTriageAgent = new SupportTriageAgent();
 
+// Authentication & Role Middleware
+apiRouter.use((req: any, res, next) => {
+  const roleHeader = req.headers['x-user-role'] as string;
+  const emailHeader = req.headers['x-user-email'] as string;
+  const nameHeader = req.headers['x-user-name'] as string;
+
+  if (roleHeader) {
+    req.authUser = {
+      role: roleHeader.toLowerCase(),
+      email: emailHeader ? emailHeader.toLowerCase() : '',
+      name: nameHeader || ''
+    };
+  }
+  next();
+});
+
+// Auth Login Endpoint
+apiRouter.post('/auth/login', (req: any, res) => {
+  try {
+    const { email, password, role } = req.body;
+
+    if (!email || !password || !role) {
+      return res.status(400).json({ error: 'Email, password, and target role are required.' });
+    }
+
+    const cleanRole = role.toLowerCase();
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Demo Account Credentials Mapping
+    const DEMO_ACCOUNTS: Record<string, { name: string; role: 'customer' | 'agent'; pass: string }> = {
+      'aarav.sharma@example.com': { name: 'Aarav Sharma', role: 'customer', pass: 'customer123' },
+      'priya.patel@example.com': { name: 'Priya Patel', role: 'customer', pass: 'customer123' },
+      'rohan.mehta@example.com': { name: 'Rohan Mehta', role: 'customer', pass: 'customer123' },
+      'agent.sarah@resolveai.com': { name: 'Agent Sarah Jenkins', role: 'agent', pass: 'agent123' },
+      'agent.marcus@resolveai.com': { name: 'Agent Marcus Vance', role: 'agent', pass: 'agent123' }
+    };
+
+    const demo = DEMO_ACCOUNTS[cleanEmail];
+
+    // If matching a specific demo account, verify role
+    if (demo) {
+      if (demo.role !== cleanRole) {
+        return res.status(401).json({ error: `Account ${email} is registered as a ${demo.role.toUpperCase()}, not a ${cleanRole.toUpperCase()}.` });
+      }
+    }
+
+    // Generate authenticated session object
+    let displayName = demo ? demo.name : cleanEmail.split('@')[0];
+    if (cleanRole === 'customer') {
+      displayName = displayName.replace(/\b\w/g, l => l.toUpperCase());
+    } else if (cleanRole === 'agent' && !displayName.startsWith('Agent')) {
+      displayName = `Agent ${displayName.replace(/\b\w/g, l => l.toUpperCase())}`;
+    }
+
+    const userSession = {
+      id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
+      name: displayName,
+      email: cleanEmail,
+      role: cleanRole as 'customer' | 'agent',
+      token: `auth-token-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+    };
+
+    res.json({ message: 'Authentication successful', user: userSession });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Authentication failed' });
+  }
+});
+
 // Health check
 apiRouter.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -33,9 +101,12 @@ apiRouter.post('/demo/seed', (req, res) => {
   res.json({ message: 'Demo tickets successfully re-seeded.', stats: DBService.getDashboardStats() });
 });
 
-// Dashboard Statistics
-apiRouter.get('/dashboard/stats', (req, res) => {
+// Dashboard Statistics (Restricted to Support Agents)
+apiRouter.get('/dashboard/stats', (req: any, res) => {
   try {
+    if (req.authUser?.role === 'customer') {
+      return res.status(403).json({ error: 'Forbidden: Access restricted to Support Agents.' });
+    }
     const stats = DBService.getDashboardStats();
     res.json(stats);
   } catch (error: any) {
@@ -43,12 +114,12 @@ apiRouter.get('/dashboard/stats', (req, res) => {
   }
 });
 
-// Get all tickets with filters
-apiRouter.get('/tickets', (req, res) => {
+// Get tickets with role-based filtering
+apiRouter.get('/tickets', (req: any, res) => {
   try {
     const { status, priority, category, search, highRisk } = req.query;
     
-    const tickets = DBService.getTickets({
+    let tickets = DBService.getTickets({
       status: status as string,
       priority: priority as string,
       category: category as string,
@@ -56,24 +127,85 @@ apiRouter.get('/tickets', (req, res) => {
       isHighRisk: highRisk === 'true' ? true : highRisk === 'false' ? false : undefined
     });
 
+    // CUSTOMER AUTHORIZATION: Filter tickets to ONLY those belonging to the authenticated customer
+    if (req.authUser?.role === 'customer' && req.authUser.email) {
+      tickets = tickets.filter(t => t.customerEmail.toLowerCase() === req.authUser.email.toLowerCase());
+    }
+
     res.json(tickets);
   } catch (error: any) {
     res.status(500).json({ error: error?.message || 'Failed to list tickets' });
   }
 });
 
-// Get single ticket by ID
-apiRouter.get('/tickets/:id', (req, res) => {
+// Get single ticket by ID with ownership verification
+apiRouter.get('/tickets/:id', (req: any, res) => {
   try {
     const ticket = DBService.getTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: `Ticket #${req.params.id} not found` });
     }
 
+    // CUSTOMER OWNERSHIP PROTECTION: Customers can ONLY access their own ticket
+    if (req.authUser?.role === 'customer' && req.authUser.email) {
+      if (ticket.customerEmail.toLowerCase() !== req.authUser.email.toLowerCase()) {
+        return res.status(403).json({ error: 'Access Denied: You do not have permission to view this ticket.' });
+      }
+    }
+
     const auditLogs = DBService.getAuditLogs(req.params.id);
     res.json({ ticket, auditLogs });
   } catch (error: any) {
     res.status(500).json({ error: error?.message || 'Failed to retrieve ticket' });
+  }
+});
+
+// Ticket Invoice Verification & Details Endpoint
+apiRouter.get('/tickets/:id/invoice', (req: any, res) => {
+  try {
+    const ticket = DBService.getTicketById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: `Ticket #${req.params.id} not found` });
+    }
+
+    // Verify ownership if customer
+    if (req.authUser?.role === 'customer' && req.authUser.email) {
+      if (ticket.customerEmail.toLowerCase() !== req.authUser.email.toLowerCase()) {
+        return res.status(403).json({ error: 'Access Denied: Cannot access invoice for a ticket you do not own.' });
+      }
+    }
+
+    // Extract invoice charges if financial details exist
+    const desc = ticket.description || '';
+    const subject = ticket.subject || '';
+    const text = `${subject} ${desc}`;
+    let chargeAmount = '';
+
+    const matches = text.match(/(₹|\$|USD|INR)\s?[\d,]+(\.\d{2})?/gi);
+    if (matches && matches.length > 0) {
+      chargeAmount = matches[0];
+    }
+
+    const invoiceData = {
+      invoiceId: `INV-${ticket.id.replace('TCK-', '')}-${new Date(ticket.createdAt).getTime().toString().slice(-4)}`,
+      ticketId: ticket.id,
+      date: ticket.createdAt,
+      customerName: ticket.customerName,
+      customerEmail: ticket.customerEmail,
+      subject: ticket.subject,
+      description: ticket.description,
+      category: ticket.category,
+      priority: ticket.priority,
+      department: ticket.department,
+      status: ticket.status,
+      resolution: ticket.humanReview?.finalResponse || ticket.aiAnalysis?.draftResponse || 'Ticket currently in review by ResolveAI support agent.',
+      resolvedDate: ticket.humanReview?.reviewedAt || ticket.updatedAt,
+      chargeAmount: chargeAmount || '0.00 (Standard Support Record)'
+    };
+
+    res.json(invoiceData);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to generate invoice record' });
   }
 });
 
@@ -108,9 +240,13 @@ apiRouter.post('/tickets', async (req, res) => {
   }
 });
 
-// Trigger / Re-run AI Analysis on ticket
-apiRouter.post('/tickets/:id/analyze', async (req, res) => {
+// Trigger / Re-run AI Analysis on ticket (Restricted to Support Agents)
+apiRouter.post('/tickets/:id/analyze', async (req: any, res) => {
   try {
+    if (req.authUser?.role === 'customer') {
+      return res.status(403).json({ error: 'Forbidden: Only Support Agents can re-trigger AI analysis.' });
+    }
+
     const ticket = DBService.getTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: `Ticket #${req.params.id} not found` });
@@ -128,7 +264,6 @@ apiRouter.post('/tickets/:id/analyze', async (req, res) => {
       auditLogs: DBService.getAuditLogs(ticket.id)
     });
   } catch (error: any) {
-    // Guaranteed non-crash fallback response
     res.status(500).json({ 
       error: error?.message || 'AI Analysis error occurred',
       message: 'AI Service failed gracefully. Ticket remains intact.'
@@ -136,9 +271,13 @@ apiRouter.post('/tickets/:id/analyze', async (req, res) => {
   }
 });
 
-// Human Approval & Response Action
-apiRouter.post('/tickets/:id/approve', (req, res) => {
+// Human Approval & Response Action (Restricted to Support Agents)
+apiRouter.post('/tickets/:id/approve', (req: any, res) => {
   try {
+    if (req.authUser?.role === 'customer') {
+      return res.status(403).json({ error: 'Forbidden: Customer accounts cannot execute ticket reviews or approvals.' });
+    }
+
     const { reviewer, category, priority, department, finalResponse } = req.body;
 
     if (!category || !priority || !department || !finalResponse) {
@@ -146,7 +285,7 @@ apiRouter.post('/tickets/:id/approve', (req, res) => {
     }
 
     const updatedTicket = DBService.approveTicket(req.params.id, {
-      reviewer: reviewer || 'Human Support Agent',
+      reviewer: reviewer || req.authUser?.name || 'Human Support Agent',
       category,
       priority,
       department,
@@ -163,9 +302,13 @@ apiRouter.post('/tickets/:id/approve', (req, res) => {
   }
 });
 
-// Human Rejection
-apiRouter.post('/tickets/:id/reject', (req, res) => {
+// Human Rejection (Restricted to Support Agents)
+apiRouter.post('/tickets/:id/reject', (req: any, res) => {
   try {
+    if (req.authUser?.role === 'customer') {
+      return res.status(403).json({ error: 'Forbidden: Support Agent permissions required.' });
+    }
+
     const { reviewer, rejectionReason } = req.body;
 
     if (!rejectionReason) {
@@ -174,7 +317,7 @@ apiRouter.post('/tickets/:id/reject', (req, res) => {
 
     const updatedTicket = DBService.rejectTicket(
       req.params.id,
-      reviewer || 'Human Support Agent',
+      reviewer || req.authUser?.name || 'Human Support Agent',
       rejectionReason
     );
 
@@ -188,14 +331,18 @@ apiRouter.post('/tickets/:id/reject', (req, res) => {
   }
 });
 
-// Human Escalation (Day 2 Hackathon Twist capability)
-apiRouter.post('/tickets/:id/escalate', (req, res) => {
+// Human Escalation (Restricted to Support Agents)
+apiRouter.post('/tickets/:id/escalate', (req: any, res) => {
   try {
+    if (req.authUser?.role === 'customer') {
+      return res.status(403).json({ error: 'Forbidden: Support Agent permissions required.' });
+    }
+
     const { reviewer, escalationNote } = req.body;
 
     const updatedTicket = DBService.escalateTicket(
       req.params.id,
-      reviewer || 'Human Support Agent',
+      reviewer || req.authUser?.name || 'Human Support Agent',
       escalationNote || 'Escalated to Tier-2 Operations Lead.'
     );
 
@@ -208,15 +355,19 @@ apiRouter.post('/tickets/:id/escalate', (req, res) => {
   }
 });
 
-// Bulk Approve Tickets
-apiRouter.post('/tickets/bulk-approve', (req, res) => {
+// Bulk Approve Tickets (Restricted to Support Agents)
+apiRouter.post('/tickets/bulk-approve', (req: any, res) => {
   try {
+    if (req.authUser?.role === 'customer') {
+      return res.status(403).json({ error: 'Forbidden: Support Agent permissions required.' });
+    }
+
     const { ids, reviewer } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'Array of ticket IDs is required' });
     }
 
-    const reviewerName = reviewer || 'Agent Sarah Jenkins (Bulk)';
+    const reviewerName = reviewer || req.authUser?.name || 'Agent Sarah Jenkins (Bulk)';
     let approvedCount = 0;
 
     for (const id of ids) {
@@ -249,15 +400,19 @@ apiRouter.post('/tickets/bulk-approve', (req, res) => {
   }
 });
 
-// Bulk Escalate Tickets
-apiRouter.post('/tickets/bulk-escalate', (req, res) => {
+// Bulk Escalate Tickets (Restricted to Support Agents)
+apiRouter.post('/tickets/bulk-escalate', (req: any, res) => {
   try {
+    if (req.authUser?.role === 'customer') {
+      return res.status(403).json({ error: 'Forbidden: Support Agent permissions required.' });
+    }
+
     const { ids, reviewer, escalationNote } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'Array of ticket IDs is required' });
     }
 
-    const reviewerName = reviewer || 'Agent Sarah Jenkins (Bulk)';
+    const reviewerName = reviewer || req.authUser?.name || 'Agent Sarah Jenkins (Bulk)';
     const note = escalationNote || 'Bulk escalated by support agent to Tier-2 Operations Lead.';
     let escalatedCount = 0;
 
@@ -281,7 +436,7 @@ apiRouter.post('/tickets/bulk-escalate', (req, res) => {
 });
 
 // Get Audit Logs
-apiRouter.get('/tickets/:id/audit', (req, res) => {
+apiRouter.get('/tickets/:id/audit', (req: any, res) => {
   try {
     const logs = DBService.getAuditLogs(req.params.id);
     res.json(logs);
@@ -289,3 +444,4 @@ apiRouter.get('/tickets/:id/audit', (req, res) => {
     res.status(500).json({ error: error?.message || 'Failed to fetch audit logs' });
   }
 });
+
