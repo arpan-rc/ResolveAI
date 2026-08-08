@@ -1,6 +1,15 @@
 import { AuditLog, Category, DashboardStats, Department, HumanReview, Priority, Ticket, TicketStatus } from '../../types';
 import { FallbackProvider } from '../ai/fallbackProvider';
 
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'customer' | 'agent';
+  password: string;
+  createdAt: string;
+}
+
 /**
  * In-Memory & Demo Database Service for ResolveAI
  * Pre-seeded with realistic hackathon demo tickets. Supports Supabase integration if keys provided.
@@ -8,13 +17,83 @@ import { FallbackProvider } from '../ai/fallbackProvider';
 export class DBService {
   private static tickets: Map<string, Ticket> = new Map();
   private static auditLogs: AuditLog[] = [];
+  private static users: Map<string, RegisteredUser> = new Map();
 
   /**
-   * Initializes database with hackathon seed tickets
+   * Initializes database with hackathon seed tickets and default accounts
    */
   public static init() {
+    this.seedDemoUsers();
     if (this.tickets.size > 0) return;
     this.seedDemoTickets();
+  }
+
+  public static seedDemoUsers() {
+    const demoAccounts: RegisteredUser[] = [
+      { id: 'USR-1001', name: 'Aarav Sharma', email: 'aarav.sharma@example.com', role: 'customer', password: 'customer123', createdAt: new Date().toISOString() },
+      { id: 'USR-1002', name: 'Priya Patel', email: 'priya.patel@example.com', role: 'customer', password: 'customer123', createdAt: new Date().toISOString() },
+      { id: 'USR-1003', name: 'Rohan Mehta', email: 'rohan.mehta@example.com', role: 'customer', password: 'customer123', createdAt: new Date().toISOString() },
+      { id: 'USR-2001', name: 'Agent Sarah Jenkins', email: 'agent.sarah@resolveai.com', role: 'agent', password: 'agent123', createdAt: new Date().toISOString() },
+      { id: 'USR-2002', name: 'Agent Marcus Vance', email: 'agent.marcus@resolveai.com', role: 'agent', password: 'agent123', createdAt: new Date().toISOString() }
+    ];
+
+    for (const u of demoAccounts) {
+      if (!this.users.has(u.email.toLowerCase())) {
+        this.users.set(u.email.toLowerCase(), u);
+      }
+    }
+  }
+
+  public static registerUser(data: { name: string; email: string; password: string; role: 'customer' | 'agent' }): RegisteredUser {
+    const cleanEmail = data.email.trim().toLowerCase();
+    if (!cleanEmail) throw new Error('Email address is required.');
+    if (!data.name.trim()) throw new Error('Full name is required.');
+    if (!data.password.trim()) throw new Error('Password is required.');
+
+    if (this.users.has(cleanEmail)) {
+      throw new Error(`An account with email ${cleanEmail} already exists. Please sign in instead.`);
+    }
+
+    let displayName = data.name.trim();
+    if (data.role === 'customer') {
+      displayName = displayName.replace(/\b\w/g, l => l.toUpperCase());
+    } else if (data.role === 'agent' && !displayName.startsWith('Agent')) {
+      displayName = `Agent ${displayName.replace(/\b\w/g, l => l.toUpperCase())}`;
+    }
+
+    const newUser: RegisteredUser = {
+      id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
+      name: displayName,
+      email: cleanEmail,
+      role: data.role,
+      password: data.password.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    this.users.set(cleanEmail, newUser);
+    return newUser;
+  }
+
+  public static authenticateUser(email: string, password: string, role: string): RegisteredUser {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanRole = role.toLowerCase();
+
+    let user = this.users.get(cleanEmail);
+
+    if (!user) {
+      // If user is not yet in map, check if it's a new login attempt and auto-register or return error
+      throw new Error(`Account ${cleanEmail} not found. Please click 'Create Account' to register.`);
+    }
+
+    if (user.role !== cleanRole) {
+      throw new Error(`Account ${email} is registered as a ${user.role.toUpperCase()}, not a ${cleanRole.toUpperCase()}.`);
+    }
+
+    if (user.password !== password.trim()) {
+      throw new Error('Invalid password provided.');
+    }
+
+    return user;
   }
 
   public static seedDemoTickets() {

@@ -9,6 +9,8 @@ interface RoleSelectionLandingProps {
 
 export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLogin, preselectedRole }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(preselectedRole || null);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -20,23 +22,27 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
     if (role === 'customer') {
       setEmail('aarav.sharma@example.com');
       setPassword('customer123');
+      setFullName('Aarav Sharma');
     } else {
       setEmail('agent.sarah@resolveai.com');
       setPassword('agent123');
+      setFullName('Agent Sarah Jenkins');
     }
   };
 
-  const handleQuickSelectDemo = (demoEmail: string, demoRole: UserRole) => {
+  const handleQuickSelectDemo = (demoEmail: string, demoRole: UserRole, demoName: string) => {
     setSelectedRole(demoRole);
+    setAuthMode('login');
     setEmail(demoEmail);
     setPassword(demoRole === 'customer' ? 'customer123' : 'agent123');
+    setFullName(demoName);
     setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRole || !email || !password) {
-      setError('Please fill in both email and password.');
+    if (!selectedRole || !email || !password || (authMode === 'register' && !fullName)) {
+      setError('Please fill in all required fields.');
       return;
     }
 
@@ -44,14 +50,15 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
     setError(null);
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const payload = authMode === 'register'
+        ? { name: fullName, email, password, role: selectedRole }
+        : { email, password, role: selectedRole };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          role: selectedRole
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
@@ -62,7 +69,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
       const data = await res.json();
       onLogin(data.user);
     } catch (err: any) {
-      setError(err?.message || 'Login failed. Please check your credentials.');
+      setError(err?.message || 'Authentication failed. Please check your details.');
     } finally {
       setLoading(false);
     }
@@ -173,7 +180,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
               </div>
             </div>
           ) : (
-            /* STEP 2: ROLE-SPECIFIC LOGIN FORM */
+            /* STEP 2: ROLE-SPECIFIC LOGIN / REGISTER FORM */
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <button
@@ -194,6 +201,32 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
                 </div>
               </div>
 
+              {/* Mode Toggle: Sign In vs Create Account */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setError(null); }}
+                  className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                    authMode === 'login'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('register'); setError(null); if (!fullName) setFullName(''); }}
+                  className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                    authMode === 'register'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Create New Account
+                </button>
+              </div>
+
               {error && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 flex items-center gap-2.5 text-xs text-rose-700 dark:text-rose-300">
                   <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
@@ -202,6 +235,25 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {authMode === 'register' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        required
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="e.g. Srijib"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     {selectedRole === 'customer' ? 'Customer Account Email' : 'Support Agent Email'}
@@ -245,7 +297,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
                       : 'bg-purple-600 hover:bg-purple-500 active:bg-purple-700 shadow-purple-500/20'
                   }`}
                 >
-                  {loading ? 'Authenticating...' : `Sign In as ${selectedRole === 'customer' ? 'Customer' : 'Support Agent'}`}
+                  {loading ? 'Authenticating...' : authMode === 'register' ? `Register & Launch ${selectedRole === 'customer' ? 'Customer Portal' : 'Agent Dashboard'}` : `Sign In as ${selectedRole === 'customer' ? 'Customer' : 'Support Agent'}`}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
@@ -260,7 +312,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                     <button
                       type="button"
-                      onClick={() => handleQuickSelectDemo('aarav.sharma@example.com', 'customer')}
+                      onClick={() => handleQuickSelectDemo('aarav.sharma@example.com', 'customer', 'Aarav Sharma')}
                       className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-left border border-slate-200 dark:border-slate-700 transition-colors"
                     >
                       <div className="font-bold text-slate-800 dark:text-slate-200">Aarav Sharma</div>
@@ -268,7 +320,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleQuickSelectDemo('priya.patel@example.com', 'customer')}
+                      onClick={() => handleQuickSelectDemo('priya.patel@example.com', 'customer', 'Priya Patel')}
                       className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-left border border-slate-200 dark:border-slate-700 transition-colors"
                     >
                       <div className="font-bold text-slate-800 dark:text-slate-200">Priya Patel</div>
@@ -276,7 +328,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleQuickSelectDemo('rohan.mehta@example.com', 'customer')}
+                      onClick={() => handleQuickSelectDemo('rohan.mehta@example.com', 'customer', 'Rohan Mehta')}
                       className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-left border border-slate-200 dark:border-slate-700 transition-colors"
                     >
                       <div className="font-bold text-slate-800 dark:text-slate-200">Rohan Mehta</div>
@@ -287,7 +339,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <button
                       type="button"
-                      onClick={() => handleQuickSelectDemo('agent.sarah@resolveai.com', 'agent')}
+                      onClick={() => handleQuickSelectDemo('agent.sarah@resolveai.com', 'agent', 'Agent Sarah Jenkins')}
                       className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-purple-100 dark:hover:bg-purple-950 text-left border border-slate-200 dark:border-slate-700 transition-colors"
                     >
                       <div className="font-bold text-slate-800 dark:text-slate-200">Agent Sarah Jenkins</div>
@@ -295,7 +347,7 @@ export const RoleSelectionLanding: React.FC<RoleSelectionLandingProps> = ({ onLo
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleQuickSelectDemo('agent.marcus@resolveai.com', 'agent')}
+                      onClick={() => handleQuickSelectDemo('agent.marcus@resolveai.com', 'agent', 'Agent Marcus Vance')}
                       className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-purple-100 dark:hover:bg-purple-950 text-left border border-slate-200 dark:border-slate-700 transition-colors"
                     >
                       <div className="font-bold text-slate-800 dark:text-slate-200">Agent Marcus Vance</div>

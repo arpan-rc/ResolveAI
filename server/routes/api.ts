@@ -15,11 +15,41 @@ apiRouter.use((req: any, res, next) => {
   if (roleHeader) {
     req.authUser = {
       role: roleHeader.toLowerCase(),
-      email: emailHeader ? emailHeader.toLowerCase() : '',
-      name: nameHeader || ''
+      email: emailHeader ? emailHeader.toLowerCase().trim() : '',
+      name: nameHeader ? decodeURIComponent(nameHeader).trim() : ''
     };
   }
   next();
+});
+
+// Auth Registration Endpoint
+apiRouter.post('/auth/register', (req: any, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ error: 'Full name, email, password, and target role are required.' });
+    }
+
+    const newUser = DBService.registerUser({
+      name,
+      email,
+      password,
+      role: role.toLowerCase() as 'customer' | 'agent'
+    });
+
+    const userSession = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      token: `auth-token-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+    };
+
+    res.status(201).json({ message: 'Account created successfully', user: userSession });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Registration failed' });
+  }
 });
 
 // Auth Login Endpoint
@@ -34,41 +64,41 @@ apiRouter.post('/auth/login', (req: any, res) => {
     const cleanRole = role.toLowerCase();
     const cleanEmail = email.trim().toLowerCase();
 
-    // Demo Account Credentials Mapping
-    const DEMO_ACCOUNTS: Record<string, { name: string; role: 'customer' | 'agent'; pass: string }> = {
-      'aarav.sharma@example.com': { name: 'Aarav Sharma', role: 'customer', pass: 'customer123' },
-      'priya.patel@example.com': { name: 'Priya Patel', role: 'customer', pass: 'customer123' },
-      'rohan.mehta@example.com': { name: 'Rohan Mehta', role: 'customer', pass: 'customer123' },
-      'agent.sarah@resolveai.com': { name: 'Agent Sarah Jenkins', role: 'agent', pass: 'agent123' },
-      'agent.marcus@resolveai.com': { name: 'Agent Marcus Vance', role: 'agent', pass: 'agent123' }
-    };
+    // Authenticate via DBService
+    try {
+      const user = DBService.authenticateUser(cleanEmail, password, cleanRole);
+      const userSession = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        token: `auth-token-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+      };
+      return res.json({ message: 'Authentication successful', user: userSession });
+    } catch (authErr: any) {
+      // Fallback for demo users if DB is freshly reloaded
+      const DEMO_ACCOUNTS: Record<string, { name: string; role: 'customer' | 'agent'; pass: string }> = {
+        'aarav.sharma@example.com': { name: 'Aarav Sharma', role: 'customer', pass: 'customer123' },
+        'priya.patel@example.com': { name: 'Priya Patel', role: 'customer', pass: 'customer123' },
+        'rohan.mehta@example.com': { name: 'Rohan Mehta', role: 'customer', pass: 'customer123' },
+        'agent.sarah@resolveai.com': { name: 'Agent Sarah Jenkins', role: 'agent', pass: 'agent123' },
+        'agent.marcus@resolveai.com': { name: 'Agent Marcus Vance', role: 'agent', pass: 'agent123' }
+      };
 
-    const demo = DEMO_ACCOUNTS[cleanEmail];
-
-    // If matching a specific demo account, verify role
-    if (demo) {
-      if (demo.role !== cleanRole) {
-        return res.status(401).json({ error: `Account ${email} is registered as a ${demo.role.toUpperCase()}, not a ${cleanRole.toUpperCase()}.` });
+      const demo = DEMO_ACCOUNTS[cleanEmail];
+      if (demo && demo.role === cleanRole && demo.pass === password.trim()) {
+        const userSession = {
+          id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
+          name: demo.name,
+          email: cleanEmail,
+          role: cleanRole as 'customer' | 'agent',
+          token: `auth-token-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+        };
+        return res.json({ message: 'Authentication successful', user: userSession });
       }
+
+      return res.status(401).json({ error: authErr?.message || 'Authentication failed' });
     }
-
-    // Generate authenticated session object
-    let displayName = demo ? demo.name : cleanEmail.split('@')[0];
-    if (cleanRole === 'customer') {
-      displayName = displayName.replace(/\b\w/g, l => l.toUpperCase());
-    } else if (cleanRole === 'agent' && !displayName.startsWith('Agent')) {
-      displayName = `Agent ${displayName.replace(/\b\w/g, l => l.toUpperCase())}`;
-    }
-
-    const userSession = {
-      id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: displayName,
-      email: cleanEmail,
-      role: cleanRole as 'customer' | 'agent',
-      token: `auth-token-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
-    };
-
-    res.json({ message: 'Authentication successful', user: userSession });
   } catch (error: any) {
     res.status(500).json({ error: error?.message || 'Authentication failed' });
   }
@@ -210,17 +240,28 @@ apiRouter.get('/tickets/:id/invoice', (req: any, res) => {
 });
 
 // Submit a new customer support ticket
-apiRouter.post('/tickets', async (req, res) => {
+apiRouter.post('/tickets', async (req: any, res) => {
   try {
-    const { customerName, customerEmail, subject, description, suggestedCategory, autoAnalyze } = req.body;
+    let { customerName, customerEmail, subject, description, suggestedCategory, autoAnalyze } = req.body;
 
-    if (!customerName || !customerEmail || !subject || !description) {
+    // CUSTOMER IDENTIFICATION SECURITY: Obtain customer email/name directly from authenticated session header
+    if (req.authUser?.role === 'customer') {
+      if (!req.authUser.email) {
+        return res.status(401).json({ error: 'Unauthorized: Valid authenticated customer email required.' });
+      }
+      customerEmail = req.authUser.email.toLowerCase().trim();
+      if (req.authUser.name) {
+        customerName = req.authUser.name.trim();
+      }
+    }
+
+    if (!customerEmail || !customerName || !subject || !description) {
       return res.status(400).json({ error: 'Missing required ticket fields: customerName, customerEmail, subject, description' });
     }
 
     const ticket = DBService.createTicket({
       customerName,
-      customerEmail,
+      customerEmail: customerEmail.toLowerCase().trim(),
       subject,
       description,
       suggestedCategory
@@ -438,6 +479,17 @@ apiRouter.post('/tickets/bulk-escalate', (req: any, res) => {
 // Get Audit Logs
 apiRouter.get('/tickets/:id/audit', (req: any, res) => {
   try {
+    const ticket = DBService.getTicketById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: `Ticket #${req.params.id} not found` });
+    }
+
+    if (req.authUser?.role === 'customer' && req.authUser.email) {
+      if (ticket.customerEmail.toLowerCase().trim() !== req.authUser.email.toLowerCase().trim()) {
+        return res.status(403).json({ error: 'Access Denied: You do not have permission to view audit logs for this ticket.' });
+      }
+    }
+
     const logs = DBService.getAuditLogs(req.params.id);
     res.json(logs);
   } catch (error: any) {
