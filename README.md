@@ -38,8 +38,7 @@ ResolveAI is designed with a **Modular AI Service Layer** and a **Deterministic 
                    ▼                                           ▼
        ┌───────────────────────┐                  ┌────────────────────────┐
        │ Claude 3.5 Sonnet     │                  │ Deterministic Fallback │
-       │ Provider (Anthropic)  |                  |                        |
-       |    /Gemini-3.6-flash  │                  │ Keyword Rule Engine    │
+       │ Provider (Anthropic)  │                  │ Keyword Rule Engine    │
        └───────────┬───────────┘                  └────────────┬───────────┘
                    │                                           │
                    └─────────────────────┬─────────────────────┘
@@ -84,12 +83,41 @@ ResolveAI is designed with a **Modular AI Service Layer** and a **Deterministic 
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Systems
 
-- **Frontend:** React 19, Vite 6, Tailwind CSS v4, Lucide Icons, Motion
-- **Backend:** Node.js, Express, tsx
-- **AI Layer:** `@anthropic-ai/sdk` (Claude 3.5 Sonnet) + Custom Deterministic Keyword Engine
-- **Database:** Local in-memory seed database with Supabase/PostgreSQL schema compatibility
+### 🟩 Frontend
+
+| Technology / Library | Role / Usage |
+| :--- | :--- |
+| **React 19** | User interface framework & reactive component state |
+| **Vite 6** | Modern ESM dev server & fast application bundling |
+| **Tailwind CSS v4** | Utility-first styling & high-contrast dark theme design system |
+| **Lucide React** | Scalable vector icon system for enterprise UI components |
+| **Motion** | Fluid animations, slide-overs & transition effects |
+
+### 🟩 Backend
+
+| Technology | Role / Usage |
+| :--- | :--- |
+| **Node.js** | Server-side runtime environment |
+| **Express.js** | REST API endpoints (`/api/tickets`, `/api/ai/status`) & middleware |
+| **tsx / esbuild** | TypeScript execution engine & production bundling |
+| **Vitest** | Automated unit test suite (`npm test`) with zero network dependency |
+
+### 🤖 AI Service & Intelligence Layer
+
+| Library / Provider | Model / Capability | Usage |
+| :--- | :--- | :--- |
+| **@google/genai** | Google Gemini 2.5 / Flash | Intelligent ticket categorization, sentiment extraction & multi-modal support |
+| **@anthropic-ai/sdk** | Anthropic Claude 3.5 Sonnet | LLM triage, policy compliance analysis & draft response synthesis |
+| **Deterministic Rule Engine** | Offline Keyword Engine | Multi-tier fallback provider ensuring zero downtime during API latency or outages |
+
+### 💾 Database & Audit Logging
+
+| Technology | Usage |
+| :--- | :--- |
+| **In-Memory Session Store** | Fast local ticket state management & demo data resets |
+| **PostgreSQL / Supabase** | Relational data schema & immutable human audit trail logging |
 
 ---
 
@@ -187,24 +215,7 @@ PORT=3000
 
 ---
 
-## 10. Public Demo
-
-- **Customer Portal (Client Machine View):** 
-  https://ais-pre-i2yrdz6sj2snl437hfbevr-414977834671.asia-southeast1.run.app/customer
-
-- **Support Agent Station View:** 
-  https://ais-pre-i2yrdz6sj2snl437hfbevr-414977834671.asia-southeast1.run.app/agent
-
-- **Prototype Navigation Hub:** 
-  https://ais-pre-i2yrdz6sj2snl437hfbevr-414977834671.asia-southeast1.run.app
-
-### Demo Access Instructions
-- Opening the **Customer Portal** link locks the session into a clean self-service ticket submission interface.
-- Opening the **Agent Station** link directly opens the agent queue with human-in-the-loop review controls, bulk approval actions, and AI triage breakdowns.
-
----
-
-## 🧪 11-Point Reliability Test Matrix
+## 🧪 10-Point Reliability Test Matrix
 
 | Test Scenario | Condition | Expected System Behavior | Status |
 | :--- | :--- | :--- | :---: |
