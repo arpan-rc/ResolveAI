@@ -13,10 +13,18 @@ import { AIStatus, AuditLog, Category, DashboardStats, Department, Priority, Tic
 export default function App() {
   const getInitialInstance = (): 'customer' | 'agent' | 'hub' => {
     if (typeof window === 'undefined') return 'hub';
+    
+    // 1. Check URL path (e.g. /customer or /agent)
+    const path = window.location.pathname.toLowerCase();
+    if (path.startsWith('/customer') || path.startsWith('/client')) return 'customer';
+    if (path.startsWith('/agent')) return 'agent';
+
+    // 2. Check URL search parameters (e.g. ?instance=customer or ?instance=agent)
     const params = new URLSearchParams(window.location.search);
     const mode = params.get('instance') || params.get('mode');
     if (mode === 'customer' || mode === 'client') return 'customer';
     if (mode === 'agent') return 'agent';
+
     return 'hub';
   };
 
