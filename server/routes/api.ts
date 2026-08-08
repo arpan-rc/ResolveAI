@@ -208,6 +208,78 @@ apiRouter.post('/tickets/:id/escalate', (req, res) => {
   }
 });
 
+// Bulk Approve Tickets
+apiRouter.post('/tickets/bulk-approve', (req, res) => {
+  try {
+    const { ids, reviewer } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Array of ticket IDs is required' });
+    }
+
+    const reviewerName = reviewer || 'Agent Sarah Jenkins (Bulk)';
+    let approvedCount = 0;
+
+    for (const id of ids) {
+      const ticket = DBService.getTicketById(id);
+      if (ticket) {
+        const category = ticket.aiAnalysis?.category || ticket.category;
+        const priority = ticket.aiAnalysis?.priority || ticket.priority;
+        const department = ticket.aiAnalysis?.department || ticket.department;
+        const finalResponse = ticket.aiAnalysis?.draftResponse || 'Approved and processed via bulk verification.';
+
+        DBService.approveTicket(id, {
+          reviewer: reviewerName,
+          category,
+          priority,
+          department,
+          finalResponse
+        });
+        approvedCount++;
+      }
+    }
+
+    res.json({
+      message: `Successfully bulk approved ${approvedCount} ticket(s).`,
+      approvedCount,
+      tickets: DBService.getTickets(),
+      stats: DBService.getDashboardStats()
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to bulk approve tickets' });
+  }
+});
+
+// Bulk Escalate Tickets
+apiRouter.post('/tickets/bulk-escalate', (req, res) => {
+  try {
+    const { ids, reviewer, escalationNote } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Array of ticket IDs is required' });
+    }
+
+    const reviewerName = reviewer || 'Agent Sarah Jenkins (Bulk)';
+    const note = escalationNote || 'Bulk escalated by support agent to Tier-2 Operations Lead.';
+    let escalatedCount = 0;
+
+    for (const id of ids) {
+      const ticket = DBService.getTicketById(id);
+      if (ticket) {
+        DBService.escalateTicket(id, reviewerName, note);
+        escalatedCount++;
+      }
+    }
+
+    res.json({
+      message: `Successfully bulk escalated ${escalatedCount} ticket(s).`,
+      escalatedCount,
+      tickets: DBService.getTickets(),
+      stats: DBService.getDashboardStats()
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to bulk escalate tickets' });
+  }
+});
+
 // Get Audit Logs
 apiRouter.get('/tickets/:id/audit', (req, res) => {
   try {

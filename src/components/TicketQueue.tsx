@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, ShieldAlert, AlertTriangle, ArrowRight, Bot, Clock, CheckCircle2, XCircle, ChevronRight, User } from 'lucide-react';
+import { Search, Filter, ShieldAlert, AlertTriangle, ArrowRight, Bot, Clock, CheckCircle2, XCircle, ChevronRight, User, CheckSquare, Square, X, Loader2 } from 'lucide-react';
 import { Category, Priority, Ticket, TicketStatus } from '../types';
 
 interface TicketQueueProps {
@@ -9,6 +9,8 @@ interface TicketQueueProps {
   onStatusTabChange: (tab: string) => void;
   onAnalyzeTicket: (id: string) => void;
   isAnalyzingId: string | null;
+  onBulkApprove?: (ids: string[]) => Promise<void>;
+  onBulkEscalate?: (ids: string[]) => Promise<void>;
 }
 
 export const TicketQueue: React.FC<TicketQueueProps> = ({
@@ -17,11 +19,16 @@ export const TicketQueue: React.FC<TicketQueueProps> = ({
   selectedStatusTab,
   onStatusTabChange,
   onAnalyzeTicket,
-  isAnalyzingId
+  isAnalyzingId,
+  onBulkApprove,
+  onBulkEscalate
 }) => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedPriority, setSelectedPriority] = useState<string>('ALL');
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<'approve' | 'escalate' | null>(null);
 
   // Filter list
   const filteredTickets = tickets.filter((t) => {
@@ -52,6 +59,71 @@ export const TicketQueue: React.FC<TicketQueueProps> = ({
 
     return true;
   });
+
+  const allFilteredSelected =
+    filteredTickets.length > 0 &&
+    filteredTickets.every((t) => selectedTicketIds.has(t.id));
+
+  const someFilteredSelected =
+    filteredTickets.some((t) => selectedTicketIds.has(t.id)) && !allFilteredSelected;
+
+  const handleToggleSelectAll = () => {
+    const next = new Set(selectedTicketIds);
+    if (allFilteredSelected) {
+      filteredTickets.forEach((t) => next.delete(t.id));
+    } else {
+      filteredTickets.forEach((t) => next.add(t.id));
+    }
+    setSelectedTicketIds(next);
+  };
+
+  const handleToggleSelectTicket = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = new Set(selectedTicketIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedTicketIds(next);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedTicketIds(new Set());
+  };
+
+  const selectedTicketList = tickets.filter((t) => selectedTicketIds.has(t.id));
+  const hasHighRiskSelected = selectedTicketList.some((t) => t.isHighRisk);
+
+  const handleExecuteBulkApprove = async () => {
+    if (selectedTicketIds.size === 0 || !onBulkApprove) return;
+    setIsBulkProcessing(true);
+    setBulkActionType('approve');
+    try {
+      await onBulkApprove(Array.from(selectedTicketIds));
+      setSelectedTicketIds(new Set());
+    } catch (err) {
+      console.error('Bulk approval failed:', err);
+    } finally {
+      setIsBulkProcessing(false);
+      setBulkActionType(null);
+    }
+  };
+
+  const handleExecuteBulkEscalate = async () => {
+    if (selectedTicketIds.size === 0 || !onBulkEscalate) return;
+    setIsBulkProcessing(true);
+    setBulkActionType('escalate');
+    try {
+      await onBulkEscalate(Array.from(selectedTicketIds));
+      setSelectedTicketIds(new Set());
+    } catch (err) {
+      console.error('Bulk escalation failed:', err);
+    } finally {
+      setIsBulkProcessing(false);
+      setBulkActionType(null);
+    }
+  };
 
   const getPriorityBadge = (p: Priority) => {
     switch (p) {
@@ -85,7 +157,7 @@ export const TicketQueue: React.FC<TicketQueueProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden mb-8">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden mb-8 relative">
       
       {/* Top Header & Controls */}
       <div className="p-4 sm:p-5 border-b border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/60">
@@ -97,9 +169,14 @@ export const TicketQueue: React.FC<TicketQueueProps> = ({
             <span className="text-xs font-mono font-normal text-slate-400 px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700">
               {filteredTickets.length} tickets
             </span>
+            {selectedTicketIds.size > 0 && (
+              <span className="text-xs font-mono font-bold text-indigo-400 px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/30">
+                {selectedTicketIds.size} selected
+              </span>
+            )}
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Review AI recommendations and verify actions before resolution.
+            Review AI recommendations, check boxes for bulk verification, or inspect individually.
           </p>
         </div>
 
@@ -178,6 +255,22 @@ export const TicketQueue: React.FC<TicketQueueProps> = ({
         <table className="w-full text-left text-xs text-slate-300">
           <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
             <tr>
+              <th className="px-3 py-3 w-10 text-center">
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAll}
+                  className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center justify-center p-0.5"
+                  title={allFilteredSelected ? 'Deselect All Filtered' : 'Select All Filtered'}
+                >
+                  {allFilteredSelected ? (
+                    <CheckSquare className="h-4 w-4 text-indigo-400" />
+                  ) : someFilteredSelected ? (
+                    <CheckSquare className="h-4 w-4 text-indigo-300/60" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                </button>
+              </th>
               <th className="px-4 py-3">Ticket ID</th>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Subject & Summary</th>
@@ -191,20 +284,32 @@ export const TicketQueue: React.FC<TicketQueueProps> = ({
           <tbody className="divide-y divide-slate-800/60">
             {filteredTickets.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
                   No tickets match the current filters.
                 </td>
               </tr>
             ) : (
               filteredTickets.map((t) => {
-                const isAnalyzing = isAnalyzingId === t.id;
+                const isSelected = selectedTicketIds.has(t.id);
 
                 return (
                   <tr
                     key={t.id}
                     onClick={() => onSelectTicket(t.id)}
-                    className="hover:bg-slate-800/50 cursor-pointer transition-colors group"
+                    className={`hover:bg-slate-800/50 cursor-pointer transition-colors group ${
+                      isSelected ? 'bg-indigo-950/30 border-l-2 border-indigo-500' : ''
+                    }`}
                   >
+                    {/* Selection Checkbox */}
+                    <td className="px-3 py-3.5 text-center" onClick={(e) => handleToggleSelectTicket(t.id, e)}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="h-4 w-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer"
+                      />
+                    </td>
+
                     {/* Ticket ID */}
                     <td className="px-4 py-3.5 font-mono font-bold text-indigo-400">
                       {t.id}
@@ -300,6 +405,71 @@ export const TicketQueue: React.FC<TicketQueueProps> = ({
         </table>
       </div>
 
+      {/* Floating Action Bar for Bulk Selection */}
+      {selectedTicketIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-2xl bg-slate-900/95 border border-indigo-500/50 rounded-2xl shadow-2xl p-3 sm:px-5 flex flex-wrap items-center justify-between gap-3 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-200">
+          
+          {/* Left Info */}
+          <div className="flex items-center gap-2.5">
+            <span className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-mono font-bold text-xs shadow-md shadow-indigo-600/30">
+              {selectedTicketIds.size} Selected
+            </span>
+
+            {hasHighRiskSelected && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-md border border-rose-500/40 animate-pulse">
+                <ShieldAlert className="h-3 w-3 text-rose-400" />
+                High-Risk Selected
+              </span>
+            )}
+
+            <button
+              onClick={handleClearSelection}
+              className="text-slate-400 hover:text-slate-200 text-xs flex items-center gap-1 underline-offset-2 hover:underline ml-1"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span>Deselect</span>
+            </button>
+          </div>
+
+          {/* Right Action Buttons */}
+          <div className="flex items-center gap-2">
+            
+            {/* Bulk Escalate */}
+            <button
+              onClick={handleExecuteBulkEscalate}
+              disabled={isBulkProcessing || !onBulkEscalate}
+              className="px-3.5 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+              title="Escalate all selected tickets to Tier-2 Operations Lead"
+            >
+              {isBulkProcessing && bulkActionType === 'escalate' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-3.5 w-3.5" />
+              )}
+              <span>Bulk Escalate</span>
+            </button>
+
+            {/* Bulk Approve */}
+            <button
+              onClick={handleExecuteBulkApprove}
+              disabled={isBulkProcessing || !onBulkApprove}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 border border-emerald-400/30 transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+              title="Verify and approve AI recommendations for all selected tickets"
+            >
+              {isBulkProcessing && bulkActionType === 'approve' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              <span>Bulk Approve</span>
+            </button>
+
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 };
+

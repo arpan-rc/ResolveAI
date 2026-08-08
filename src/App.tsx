@@ -276,6 +276,55 @@ export default function App() {
     }
   };
 
+  // Bulk Approve Tickets
+  const handleBulkApproveTickets = async (ticketIds: string[]) => {
+    if (!ticketIds || ticketIds.length === 0) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/tickets/bulk-approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: ticketIds,
+          reviewer: 'Agent Sarah Jenkins'
+        })
+      });
+
+      if (res.ok) {
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Failed to bulk approve tickets:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Bulk Escalate Tickets
+  const handleBulkEscalateTickets = async (ticketIds: string[]) => {
+    if (!ticketIds || ticketIds.length === 0) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/tickets/bulk-escalate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: ticketIds,
+          reviewer: 'Agent Sarah Jenkins',
+          escalationNote: 'Bulk escalated to Operations Lead for human review.'
+        })
+      });
+
+      if (res.ok) {
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Failed to bulk escalate tickets:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0B0F1A] text-slate-100 font-sans selection:bg-indigo-500 selection:text-white flex flex-col justify-between">
       <div>
@@ -339,6 +388,8 @@ export default function App() {
                     onStatusTabChange={(tab) => setSelectedStatusTab(tab)}
                     onAnalyzeTicket={handleReAnalyzeTicket}
                     isAnalyzingId={isAnalyzingId}
+                    onBulkApprove={handleBulkApproveTickets}
+                    onBulkEscalate={handleBulkEscalateTickets}
                   />
                 </>
               )}

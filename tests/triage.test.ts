@@ -150,6 +150,49 @@ describe('ResolveAI Support Ticket Triage Suite', () => {
       const rejectLog = logs.find(l => l.action === 'HUMAN_REJECTED');
       expect(rejectLog).toBeDefined();
     });
+
+    it('should support bulk approving multiple tickets with human audit trail', () => {
+      const ticketIds = ['TCK-1042', 'TCK-1041'];
+
+      ticketIds.forEach(id => {
+        const ticket = DBService.getTicketById(id);
+        if (ticket) {
+          DBService.approveTicket(id, {
+            reviewer: 'Agent Sarah Jenkins (Bulk)',
+            category: ticket.category,
+            priority: ticket.priority,
+            department: ticket.department,
+            finalResponse: ticket.aiAnalysis?.draftResponse || 'Approved'
+          });
+        }
+      });
+
+      const t1 = DBService.getTicketById('TCK-1042');
+      const t2 = DBService.getTicketById('TCK-1041');
+
+      expect(['APPROVED', 'EDITED_APPROVED']).toContain(t1?.status);
+      expect(['APPROVED', 'EDITED_APPROVED']).toContain(t2?.status);
+
+      const logs1 = DBService.getAuditLogs('TCK-1042');
+      expect(logs1.some(l => l.actor.includes('Sarah Jenkins'))).toBe(true);
+    });
+
+    it('should support bulk escalating multiple tickets to Tier-2 Operations Lead', () => {
+      const ticketIds = ['TCK-1042', 'TCK-1040'];
+
+      ticketIds.forEach(id => {
+        DBService.escalateTicket(id, 'Agent Sarah Jenkins (Bulk)', 'Bulk escalated to Tier-2 Lead.');
+      });
+
+      const t1 = DBService.getTicketById('TCK-1042');
+      const t2 = DBService.getTicketById('TCK-1040');
+
+      expect(t1?.status).toBe('ESCALATED');
+      expect(t2?.status).toBe('ESCALATED');
+
+      const logs = DBService.getAuditLogs('TCK-1040');
+      expect(logs.some(l => l.action === 'HUMAN_ESCALATED')).toBe(true);
+    });
   });
 
   describe('4. AI Service Fallback Safeguards', () => {
