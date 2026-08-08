@@ -186,7 +186,7 @@ PORT=3000
 
 ---
 
-## 11. Public Demo
+## 10. Public Demo
 
 - **Customer Portal (Client Machine View):** 
   https://ais-pre-i2yrdz6sj2snl437hfbevr-414977834671.asia-southeast1.run.app/customer
@@ -203,7 +203,7 @@ PORT=3000
 
 ---
 
-## 🧪 10-Point Reliability Test Matrix
+## 🧪 11-Point Reliability Test Matrix
 
 | Test Scenario | Condition | Expected System Behavior | Status |
 | :--- | :--- | :--- | :---: |
