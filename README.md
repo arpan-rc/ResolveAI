@@ -127,16 +127,42 @@ ResolveAI is designed with a **Modular AI Service Layer** and a **Deterministic 
 
 ## 🚀 Getting Started
 
-### 1. Installation
+> 💡 **Prerequisite Notice:** If running terminal commands shows `'npm' is not recognized as an internal or external command`, Node.js is not installed on your laptop yet. Follow Step 1 below to download Node.js first.
+
+### Setup Steps & Prerequisites Matrix
+
+| Step | Required Action | Link / Command | Description |
+| :---: | :--- | :--- | :--- |
+| **01** | **Download Node.js & npm** | 📥 [nodejs.org (LTS Version)](https://nodejs.org/) | **Required first!** Install Node.js v18+ to enable `npm` in CMD/Terminal. Restart terminal after installation. |
+| **02** | **Install Dependencies** | `npm install` | Downloads all frontend and backend project packages. |
+| **03** | **Start Development Server** | `npm run dev` | Launches local server on `http://localhost:3000`. |
+
+---
+
+### Step-by-Step Setup Guide
+
+#### 1. Download Node.js (If `'npm' is not recognized`)
+If running `npm install` on a laptop throws `'npm' is not recognized as an internal or external command`:
+1. Open your browser and go to **[https://nodejs.org/](https://nodejs.org/)**.
+2. Download and run the **LTS (Long Term Support)** installer for Windows, macOS, or Linux.
+3. Follow installer defaults (ensure *"Add to PATH"* is checked).
+4. **Important:** Close and restart your Command Prompt / Terminal window after installation completes.
+5. Confirm installation by typing:
+   ```bash
+   node -v
+   npm -v
+   ```
+
+#### 2. Install Project Dependencies
 ```bash
 npm install
 ```
 
-### 2. Run Locally in Development Mode
+#### 3. Run Application Locally
 ```bash
 npm run dev
 ```
-The server will start at `http://0.0.0.0:3000`. Open your browser to view the application.
+The server will start at `http://localhost:3000`. Open your browser to view the live app.
 
 ---
 
