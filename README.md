@@ -257,3 +257,10 @@ PORT=3000
 3. **Human Verification & Override (45s):** Modify priority from `HIGH` → `CRITICAL` or customize response. Click **Approve & Dispatch Response**. Observe status changing to `Edited & Approved`.
 4. **Customer Portal Submission (30s):** Switch to Customer Portal. Click quick preset *"Security & Unauthorized Charge"*. Submit ticket and watch real-time AI triage.
 5. **Fallback Test Bench (30s):** Click the **AI Status Pill** in top header. Toggle **Force Fallback Mode**. Submit another ticket to demonstrate zero-crash fallback reliability.
+
+---
+
+📄 License
+This project is licensed under the MIT License. Feel free to use and build upon it with proper attribution to Team DARK WEB.
+
+
