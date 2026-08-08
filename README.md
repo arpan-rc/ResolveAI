@@ -38,7 +38,8 @@ ResolveAI is designed with a **Modular AI Service Layer** and a **Deterministic 
                    ▼                                           ▼
        ┌───────────────────────┐                  ┌────────────────────────┐
        │ Claude 3.5 Sonnet     │                  │ Deterministic Fallback │
-       │ Provider (Anthropic)  │                  │ Keyword Rule Engine    │
+       │ Provider (Anthropic)  |                  |                        |
+       |    /Gemini-3.6-flash  │                  │ Keyword Rule Engine    │
        └───────────┬───────────┘                  └────────────┬───────────┘
                    │                                           │
                    └─────────────────────┬─────────────────────┘
