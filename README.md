@@ -1,4 +1,4 @@
-# ResolveAI — Human-in-the-Loop Customer Support Ticket Automation
+# ResolveAI — Human-in-the-Loop Customer Support Ticket Automation.
 
 > **Hackathon Submission:** Deploy or Die: HowToAlgo x GDG on Campus KIIT Hackathon  
 > **Track:** Track A — Business Process Automation  
