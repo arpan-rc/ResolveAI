@@ -7,6 +7,11 @@
 
 ---
 
+## RANKED 28 AMONG 285 TEAMS
+GDG Group held hackathon in Kalinga Institute of Industrial Technology, in which this project got an overall score of 48.96/110 and ranked 28 out of 285 teams out of 151 submissions.
+
+---
+
 ## 🌟 Executive Summary
 
 **ResolveAI** automates repetitive customer support ticket triaging, categorization, priority scoring, department routing, and response drafting — while enforcing strict **Human-in-the-Loop (HITL) verification** before any action or customer dispatch occurs.
